@@ -1,0 +1,131 @@
+<html>
+
+<head>
+    <meta http-equiv="Access-Control-Allow-Origin" content="*" />
+    <!--引入CSS-->
+    <link rel="stylesheet" type="text/css" href="webuploader.css">
+    <script type="text/javascript" src="jquery-2.1.4.js"></script>
+    <!--引入JS-->
+    <script type="text/javascript" src="webuploader.js"></script>
+    <script>
+        var uploader;
+        var images = {};
+
+        function initial() {
+            uploader = WebUploader.create({
+                // swf文件路径
+                swf: 'Uploader.swf',
+                // 文件接收服务端。
+                server: 'http://localhost:9000/files',
+                // 选择文件的按钮。可选。
+                // 内部根据当前运行是创建，可能是input元素，也可能是flash.
+                pick: '#picker',
+                // 不压缩image, 默认如果是jpeg，文件上传前会压缩一把再上传！
+                resize: false
+            });
+            uploader.option('compress', {
+                // 图片质量，只有type为`image/jpeg`的时候才有效。
+                quality: 50,
+                // 是否允许放大，如果想要生成小图的时候不失真，此选项应该设置为false.
+                allowMagnify: false,
+                // 是否允许裁剪。
+                crop: false,
+                // 是否保留头部meta信息。
+                preserveHeaders: true,
+                // 如果发现压缩后文件大小比原来还大，则使用原来图片
+                // 此属性可能会影响图片自动纠正功能
+                noCompressIfLarger: true,
+                // 单位字节，如果图片大小小于此值，不会采用压缩。
+                compressSize: 0
+            });
+            uploader.option('thumb', {
+                // 图片质量，只有type为`image/jpeg`的时候才有效。
+                quality: 90,
+                // 是否允许放大，如果想要生成小图的时候不失真，此选项应该设置为false.
+                allowMagnify: false,
+                // 是否允许裁剪。
+                crop: false,
+                // 为空的话则保留原有图片格式。
+                // 否则强制转换成指定的类型。
+                type: 'image/jpeg'
+            });
+
+            uploader.on('fileQueued', function (file) {
+                var $list = $('#thelist');
+                $list.append('<div id="' + file.id + '" class="item">' +
+                    '<h4 class="info">' + file.name + '</h4>' +
+                    '<p class="state">等待上传...</p>' +
+                    '</div>');
+                uploader.makeThumb(file, function (error, ret) {
+                    if (error) {
+                        $list.append('预览错误');
+                    } else {
+                        $list.append('&lt;img alt="" src="' + ret + '" />');
+                        images["test"] = ret;
+                    }
+                });
+            });
+
+            uploader.on('uploadProgress', function (file, percentage) {
+                var $li = $('#' + file.id),
+                    $percent = $li.find('.progress .progress-bar');
+
+                // 避免重复创建
+                if (!$percent.length) {
+                    $percent = $('<div class="progress progress-striped active">' +
+                        '<div class="progress-bar" role="progressbar" style="width: 0%">' +
+                        '</div>' +
+                        '</div>').appendTo($li).find('.progress-bar');
+                }
+
+                $li.find('p.state').text('上传中');
+
+                $percent.css('width', percentage * 100 + '%');
+            });
+        }
+
+        function upload() {
+            uploader.upload();
+        }
+
+        function uploadThumb() {
+            for (var img in images) {
+                $.ajax({
+                    url: 'http://localhost:9000/files/thumbs',
+                    type: 'post',
+                    data: JSON.stringify({
+                        "name": img,
+                        "content": images[img]
+                    }),
+                    datatype:"json",
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json"
+                    },
+                    success: function (data, status) {},
+                    error: function () {}
+                })
+               
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div id="uploader" class="wu-example">
+        <!--用来存放文件信息-->
+        <div id="thelist" class="uploader-list"></div>
+        <div class="btns">
+            <div id="picker">选择文件</div>
+            <button id="ctlBtn" class="btn btn-default" onclick="upload()">开始上传</button>
+            <button id="ctlThumbBtn" class="btn btn-default" onclick="uploadThumb()">上传缩略图</button>
+        </div>
+    </div>
+    <img alt="" src="data:image/jpeg;base64,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"
+    />
+    <script>
+        initial();
+    </script>
+</body>
+
+</html>
